@@ -19,10 +19,10 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
 
-keep_alive()  # Bật Keep-Alive
+keep_alive()
 
 # ===== BOT SETUP =====
-BOT_TOKEN = os.getenv("DISCORD_TOKEN")  # Dùng biến môi trường
+BOT_TOKEN = os.getenv("DISCORD_TOKEN")
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -54,6 +54,10 @@ EMOTE_LIST = {
     "uethochuyensinh":"909050002","hoadon":"909050005","minato":"909050006","therings":"909050009",
     "sungcuoi":"909050020"
 }
+
+# ===== BOT FIX UID + PASSWORD FOR FRIEND API =====
+FRIEND_UID = "4280450142"
+FRIEND_PASSWORD = "0597DEB46F6A975DD6BD4A0C3313023D6F51A381CDBFDE6C085D408B21F4766B"
 
 # ===== EMBED FUNCTION =====
 def make_embed(title):
@@ -119,6 +123,29 @@ async def lag(ctx, teamcode: str):
             await ctx.send(f"❌ API lỗi: {req.status_code}")
     except Exception as e:
         await ctx.send(f"❌ Không thể kết nối API: {e}")
+
+# ===== FRIEND COMMANDS (CHỐNG DM RIÊNG, DÙNG UID + PASSWORD CỐ ĐỊNH) =====
+@bot.command()
+async def ketban(ctx, target_uid: str):
+    if ctx.guild is None:
+        return await ctx.send("❌ Lệnh này không được dùng trong DM!")
+    api = f"https://danger-add-friend.vercel.app/adding_friend?uid={FRIEND_UID}&password={FRIEND_PASSWORD}&friend_uid={target_uid}"
+    try:
+        requests.get(api, timeout=10)
+        await ctx.send(embed=make_embed(f"🤝 Đã gửi lời mời kết bạn tới `{target_uid}`!"))
+    except:
+        await ctx.send("❌ Lỗi API kết bạn!")
+
+@bot.command()
+async def xoa(ctx, target_uid: str):
+    if ctx.guild is None:
+        return await ctx.send("❌ Lệnh này không được dùng trong DM!")
+    api = f"https://danger-add-friend.vercel.app/remove_friend?uid={FRIEND_UID}&password={FRIEND_PASSWORD}&friend_uid={target_uid}"
+    try:
+        requests.get(api, timeout=10)
+        await ctx.send(embed=make_embed(f"❌ Đã xóa bạn với `{target_uid}`!"))
+    except:
+        await ctx.send("❌ Lỗi API xoá bạn!")
 
 # ===== RUN BOT =====
 bot.run(BOT_TOKEN)
