@@ -55,9 +55,10 @@ EMOTE_LIST = {
     "sungcuoi":"909050020"
 }
 
-# ===== BOT FIX UID + PASSWORD FOR FRIEND API =====
+# ===== FRIEND API FIXED UID + PASSWORD =====
 FRIEND_UID = "4280450142"
-FRIEND_PASSWORD = "0597DEB46F6A975DD6BD4A0C3313023D6F51A381CDBFDE6C085D408B21F4766B"
+FRIEND_PASSWORD = "0597DEB46F6A975DD6BD4BD4A0C3313023D6F51A381CDBFDE6C085D408B21F4766B"
+ALLOWED_CHANNEL = 1446047797777404039  # Chỉ kênh này mới được chạy lệnh
 
 # ===== EMBED FUNCTION =====
 def make_embed(title):
@@ -67,7 +68,7 @@ def make_embed(title):
         color=discord.Color.green()
     )
 
-# ===== COMMANDS =====
+# ===== NORMAL COMMANDS =====
 @bot.command()
 async def emote(ctx, teamcode: str, uid: str, gun_name: str):
     gun = gun_name.lower()
@@ -124,11 +125,14 @@ async def lag(ctx, teamcode: str):
     except Exception as e:
         await ctx.send(f"❌ Không thể kết nối API: {e}")
 
-# ===== FRIEND COMMANDS (CHỐNG DM RIÊNG, DÙNG UID + PASSWORD CỐ ĐỊNH) =====
+# ===== FRIEND COMMANDS (CHỈ CHANNEL CỤ THỂ, KHÔNG DM) =====
+def check_channel(ctx):
+    return ctx.guild is not None and ctx.channel.id == ALLOWED_CHANNEL
+
 @bot.command()
 async def ketban(ctx, target_uid: str):
-    if ctx.guild is None:
-        return await ctx.send("❌ Lệnh này không được dùng trong DM!")
+    if not check_channel(ctx):
+        return await ctx.send("❌ Lệnh này chỉ được dùng trong kênh được phép, không được dùng DM hoặc kênh khác!")
     api = f"https://danger-add-friend.vercel.app/adding_friend?uid={FRIEND_UID}&password={FRIEND_PASSWORD}&friend_uid={target_uid}"
     try:
         requests.get(api, timeout=10)
@@ -138,8 +142,8 @@ async def ketban(ctx, target_uid: str):
 
 @bot.command()
 async def xoa(ctx, target_uid: str):
-    if ctx.guild is None:
-        return await ctx.send("❌ Lệnh này không được dùng trong DM!")
+    if not check_channel(ctx):
+        return await ctx.send("❌ Lệnh này chỉ được dùng trong kênh được phép, không được dùng DM hoặc kênh khác!")
     api = f"https://danger-add-friend.vercel.app/remove_friend?uid={FRIEND_UID}&password={FRIEND_PASSWORD}&friend_uid={target_uid}"
     try:
         requests.get(api, timeout=10)
