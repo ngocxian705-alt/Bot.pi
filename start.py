@@ -75,12 +75,16 @@ async def emote(ctx, teamcode: str, uid: str, gun_name: str):
     if gun not in EMOTE_LIST:
         available = ", ".join(EMOTE_LIST.keys())
         return await ctx.send(f"❌ Không tìm thấy emote `{gun}`!\n👉 Danh sách: `{available}`")
+    
     emote_id = EMOTE_LIST[gun]
-    api = f"https://ff-community-apiemoteessss.onrender.com/emote?teamcode={teamcode}&uid1={uid}&emote_id={emote_id}"
+    # API MỚI
+    api = f"http://192.168.1.37:5000/join?tc={teamcode}&uid1={uid}&emote_id={emote_id}"
+    
     try:
         requests.get(api, timeout=10)
-    except:
-        pass
+    except Exception as e:
+        return await ctx.send(f"❌ Lỗi API: {e}")
+    
     await ctx.send(embed=make_embed(f"🔥 EMOTE • {gun}"))
 
 @bot.command(name="5")
