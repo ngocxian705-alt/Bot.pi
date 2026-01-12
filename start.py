@@ -1,13 +1,28 @@
 import os
+import threading
+import requests
 import discord
 from discord.ext import commands
-import requests
+from flask import Flask
 
-# ========= CONFIG =========
-TOKEN = os.getenv("DISCORD_TOKEN")  # Lấy token từ ENV
+# ================== FLASK (MỞ PORT CHO RENDER) ==================
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Bot alive"
+
+def run_web():
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
+
+threading.Thread(target=run_web).start()
+
+# ================== CONFIG ==================
+TOKEN = os.getenv("DISCORD_TOKEN")
 API_URL = "https://sikibidiapiemote.onrender.com/join"
 
-# ========= FULL EMOTE =========
+# ================== EMOTES ==================
 EMOTES = {
     "m60": "909051003",
     "soka": "909000068",
@@ -35,96 +50,35 @@ EMOTES = {
     "cuoi": "909051015",
     "voisen": "909051004",
     "choigame": "909051017",
-    "cuoi2": "909000002",
-    "chongday": "909000012",
-    "chicken": "909000006",
-    "ngaivang": "909000014",
-    "aicap": "909000011",
-    "tanghoa": "909000010",
-    "buocdicuaquy": "909000020",
-    "dakungfu": "909000028",
-    "thatim": "909000045",
-    "AK": "909000063",
-    "nhayvoicho": "909000052",
-    "saitama1": "909000064",
-    "siu": "909000066",
-    "mangxa4nguoi": "909000071",
-    "xemangxa": "909000074",
-    "cudam": "909000067",
-    "namdam": "909037011",
-    "chayraimoney": "909035001",
-    "Ctsinhton": "909034011",
-    "tamnang": "909036006",
-    "xevang4banh": "909040001",
-    "baytrenkiem": "909041004",
-    "xichdu": "909040013",
     "sikibidi": "909042017",
-    "xemoto": "909043009",
-    "xe_lambo": "909042012",
-    "traitim2nguoi": "909043010",
-    "cauhon": "909043013",
-    "zombie": "909044012",
-    "parafal": "909045001",
-    "maico": "909045009",
-    "ngoithien": "909045015",
-    "cuoingua": "909045003",
-    "phao": "909045005",
-    "bapbenh": "909045012",
-    "6nong": "909046010",
-    "camco2": "909046013",
-    "sutbong": "909046015",
-    "nhaybong": "909046016",
-    "lacdich": "909046017",
-    "ngoighe": "909047001",
-    "ghetinhyeu": "909047003",
-    "canh1": "909047004",
-    "ngaivang2": "909047005",
-    "khoecup": "909047006",
     "rasengan": "909047015",
-    "bithuatlangla": "909047016",
-    "ketannaruto": "909047017",
-    "chayninja": "909047018",
-    "ketannaruto2": "909047019",
-    "guitar": "909048003",
-    "piano": "909048004",
-    "nhaydanhtrong": "909048005",
-    "chacchac": "909048006",
-    "ngu": "909048007",
-    "lacda": "909048009",
-    "camco3": "909048011",
-    "nhaydengiau": "909048012",
-    "nailoong": "909049001",
-    "songaychoi": "909049006",
-    "p90": "909049010",
-    "oi": "909049013",
-    "uethochuyensinh": "909050002",
-    "hoadon": "909050005",
-    "minato": "909050006",
-    "The_Rings": "909050009",
     "sungcuoi": "909050020"
 }
 
-# ========= BOT =========
+# ================== DISCORD BOT ==================
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# ========= MODAL =========
+# ================== MODAL ==================
 class InfoModal(discord.ui.Modal, title="Nhập thông tin Free Fire"):
     tc = discord.ui.TextInput(label="Team Code", placeholder="VD: ABC123", required=True)
     uid = discord.ui.TextInput(label="UID", placeholder="VD: 1234567890", required=True)
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.send_message(
-            content="🎯 Chọn emote bên dưới",
+            "🎯 Chọn emote bên dưới",
             view=EmoteView(self.tc.value, self.uid.value)
         )
 
-# ========= SELECT =========
+# ================== SELECT ==================
 class EmoteSelect(discord.ui.Select):
     def __init__(self, tc, uid):
         self.tc = tc
         self.uid = uid
-        options = [discord.SelectOption(label=name, value=name) for name in list(EMOTES.keys())[:25]]
+        options = [
+            discord.SelectOption(label=name, value=name)
+            for name in list(EMOTES.keys())[:25]
+        ]
         super().__init__(placeholder="🎭 Chọn emote", options=options)
 
     async def callback(self, interaction: discord.Interaction):
@@ -132,12 +86,17 @@ class EmoteSelect(discord.ui.Select):
         name = self.values[0]
         emote_id = EMOTES[name]
 
-        params = {"tc": self.tc, "uid1": self.uid, "emote_id": emote_id}
+        params = {
+            "tc": self.tc,
+            "uid1": self.uid,
+            "emote_id": emote_id
+        }
+
         try:
             r = requests.get(API_URL, params=params, timeout=15)
             status = "✅ Thành công" if r.status_code == 200 else "❌ Thất bại"
         except Exception as e:
-            status = f"⚠️ Lỗi: {e}"
+            status = f"⚠️ Lỗi API"
 
         embed = discord.Embed(title="🎭 FREE FIRE EMOTE", color=0x00ff66)
         embed.set_author(name=user.display_name, icon_url=user.display_avatar.url)
@@ -155,26 +114,24 @@ class EmoteView(discord.ui.View):
         super().__init__(timeout=120)
         self.add_item(EmoteSelect(tc, uid))
 
-# ========= BUTTON =========
+# ================== BUTTON ==================
 class StartView(discord.ui.View):
     @discord.ui.button(label="🚀 GỬI EMOTE", style=discord.ButtonStyle.success)
     async def start(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Chặn DM
         if interaction.guild is None:
             await interaction.response.send_message(
-                "❌ Bạn không thể dùng bot qua tin nhắn riêng! Vui lòng dùng trong server.",
+                "❌ Không dùng bot trong tin nhắn riêng!",
                 ephemeral=True
             )
             return
         await interaction.response.send_modal(InfoModal())
 
-# ========= SLASH COMMAND =========
+# ================== SLASH COMMAND ==================
 @bot.tree.command(name="emote", description="Gửi emote Free Fire bằng nút bấm")
 async def emote(interaction: discord.Interaction):
-    # Chặn DM
     if interaction.guild is None:
         await interaction.response.send_message(
-            "❌ Bạn không thể dùng bot qua tin nhắn riêng! Vui lòng dùng trong server.",
+            "❌ Không dùng bot trong tin nhắn riêng!",
             ephemeral=True
         )
         return
@@ -186,9 +143,10 @@ async def emote(interaction: discord.Interaction):
         color=0x00ff66
     )
     embed.set_author(name=user.display_name, icon_url=user.display_avatar.url)
+
     await interaction.response.send_message(embed=embed, view=StartView())
 
-# ========= READY =========
+# ================== READY ==================
 @bot.event
 async def on_ready():
     await bot.tree.sync()
