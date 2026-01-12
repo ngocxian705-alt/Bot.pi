@@ -4,7 +4,7 @@ from discord.ext import commands
 import requests
 
 # ========= CONFIG =========
-TOKEN = os.getenv("DISCORD_TOKEN")
+TOKEN = os.getenv("DISCORD_TOKEN")  # Lấy token từ ENV
 API_URL = "https://sikibidiapiemote.onrender.com/join"
 
 # ========= FULL EMOTE =========
@@ -124,12 +124,7 @@ class EmoteSelect(discord.ui.Select):
     def __init__(self, tc, uid):
         self.tc = tc
         self.uid = uid
-
-        options = [
-            discord.SelectOption(label=name, value=name)
-            for name in list(EMOTES.keys())[:25]
-        ]
-
+        options = [discord.SelectOption(label=name, value=name) for name in list(EMOTES.keys())[:25]]
         super().__init__(placeholder="🎭 Chọn emote", options=options)
 
     async def callback(self, interaction: discord.Interaction):
@@ -137,33 +132,19 @@ class EmoteSelect(discord.ui.Select):
         name = self.values[0]
         emote_id = EMOTES[name]
 
-        params = {
-            "tc": self.tc,
-            "uid1": self.uid,
-            "emote_id": emote_id
-        }
+        params = {"tc": self.tc, "uid1": self.uid, "emote_id": emote_id}
+        try:
+            r = requests.get(API_URL, params=params, timeout=15)
+            status = "✅ Thành công" if r.status_code == 200 else "❌ Thất bại"
+        except Exception as e:
+            status = f"⚠️ Lỗi: {e}"
 
-        r = requests.get(API_URL, params=params)
-
-        embed = discord.Embed(
-            title="🎭 FREE FIRE EMOTE",
-            color=0x00ff66
-        )
-
-        embed.set_author(
-            name=user.display_name,
-            icon_url=user.display_avatar.url
-        )
-
+        embed = discord.Embed(title="🎭 FREE FIRE EMOTE", color=0x00ff66)
+        embed.set_author(name=user.display_name, icon_url=user.display_avatar.url)
         embed.add_field(name="👤 UID", value=self.uid, inline=False)
         embed.add_field(name="🔑 Team Code", value=self.tc, inline=False)
         embed.add_field(name="🎬 Emote", value=name, inline=True)
-        embed.add_field(
-            name="📡 Status",
-            value="✅ Thành công" if r.status_code == 200 else "❌ Thất bại",
-            inline=True
-        )
-
+        embed.add_field(name="📡 Status", value=status, inline=True)
         embed.set_footer(text="Powered by Sikibidi API")
         embed.timestamp = discord.utils.utcnow()
 
@@ -178,29 +159,36 @@ class EmoteView(discord.ui.View):
 class StartView(discord.ui.View):
     @discord.ui.button(label="🚀 GỬI EMOTE", style=discord.ButtonStyle.success)
     async def start(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Chặn DM
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "❌ Bạn không thể dùng bot qua tin nhắn riêng! Vui lòng dùng trong server.",
+                ephemeral=True
+            )
+            return
         await interaction.response.send_modal(InfoModal())
 
 # ========= SLASH COMMAND =========
 @bot.tree.command(name="emote", description="Gửi emote Free Fire bằng nút bấm")
 async def emote(interaction: discord.Interaction):
-    user = interaction.user
+    # Chặn DM
+    if interaction.guild is None:
+        await interaction.response.send_message(
+            "❌ Bạn không thể dùng bot qua tin nhắn riêng! Vui lòng dùng trong server.",
+            ephemeral=True
+        )
+        return
 
+    user = interaction.user
     embed = discord.Embed(
         title="🔥 FREE FIRE EMOTE",
         description="Bấm nút bên dưới để gửi emote",
         color=0x00ff66
     )
+    embed.set_author(name=user.display_name, icon_url=user.display_avatar.url)
+    await interaction.response.send_message(embed=embed, view=StartView())
 
-    embed.set_author(
-        name=user.display_name,
-        icon_url=user.display_avatar.url
-    )
-
-    await interaction.response.send_message(
-        embed=embed,
-        view=StartView()
-    )
-
+# ========= READY =========
 @bot.event
 async def on_ready():
     await bot.tree.sync()
